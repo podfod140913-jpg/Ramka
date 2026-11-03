@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Рамка — оверлеи для OBS из ваших API</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f1fa;--panel:#fff;--line:#dcd8ea;--text:#1d1a33;--mute:#6b6788;--acc:#5b3df5;--accT:#fff;--ok:#0c8a4a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14122a;--panel:#1e1b3a;--line:#332f5c;--text:#ecebfa;--mute:#9a96c4;--acc:#8c78ff;--accT:#14122a;--ok:#4fe08f}}
+:root[data-theme="dark"]{--bg:#14122a;--panel:#1e1b3a;--line:#332f5c;--text:#ecebfa;--mute:#9a96c4;--acc:#8c78ff;--accT:#14122a;--ok:#4fe08f}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.45 Manrope,system-ui,sans-serif}
+h1,h2,.logo{font-family:Unbounded,Manrope,sans-serif;margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn{background:var(--acc);color:var(--accT);border:0;border-radius:10px;padding:11px 18px;font-weight:800}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+input[type=text],input[type=password],input[type=number],input[type=email]{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+label{display:block;font-weight:600;font-size:13px;color:var(--mute);margin:0 0 5px}
+.hide{display:none!important}
+
+/* login */
+#auth{min-height:100vh;display:grid;place-items:center;padding:20px}
+.authbox{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px}
+.logo{font-size:26px;font-weight:800;letter-spacing:-.5px}
+.authbox p{color:var(--mute);margin:6px 0 20px}
+.tabs{display:flex;gap:6px;margin-bottom:16px}
+.tabs button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:transparent;font-weight:600}
+.tabs button[aria-selected=true]{background:var(--acc);color:var(--accT);border-color:var(--acc)}
+.authbox .row{margin-bottom:12px}
+
+/* app */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+.wrap{display:grid;grid-template-columns:1fr 330px;gap:20px;padding:20px;max-width:1200px;margin:0 auto}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+h2{font-size:15px;margin-bottom:14px}
+
+/* stage */
+.stage{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#2a2650,#0f0d22);display:grid;place-items:center;color:#8c88b8;font-weight:600}
+.cam{position:absolute;inset:8% 18% 22% 18%;border:2px dashed #4a4580;border-radius:8px;display:grid;place-items:center;font-size:13px;text-align:center}
+.bar{position:absolute;left:18%;right:18%;bottom:7%;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:8px 14px;border-radius:12px;background:var(--bc,#1c1a35);border:2px solid var(--ac,#ff5500);color:#fff;font-weight:800;min-height:48px}
+.bar .n{font-size:clamp(11px,2.6vw,20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .e{text-align:right;font-family:Unbounded,sans-serif;font-size:clamp(11px,2.6vw,19px)}
+.bar .e small{font-size:.6em;opacity:.7;margin-left:3px}
+.lvl{width:clamp(30px,6vw,44px);height:clamp(30px,6vw,44px)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.sw{display:flex;gap:8px}
+.sw button{width:34px;height:34px;border-radius:50%;border:2px solid var(--line)}
+.sw button[aria-pressed=true]{border-color:var(--text)}
+.link{display:flex;gap:8px;margin-top:16px}
+.link input{font-family:ui-monospace,monospace;font-size:13px}
+
+/* side */
+.me{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.ava{width:48px;height:48px;border-radius:50%;background:var(--acc);color:var(--accT);display:grid;place-items:center;font:800 20px Unbounded,sans-serif}
+.me b{display:block}.me span{color:var(--mute);font-size:13px}
+.api{width:100%;text-align:left;display:block;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+.api[aria-expanded=true]{border-color:var(--acc)}
+.api .t{display:flex;justify-content:space-between;align-items:center;font-weight:800}
+.api .s{font-size:12px;color:var(--mute);font-weight:600}
+.api .s.ok{color:var(--ok)}
+.key{margin:-2px 0 12px;padding:12px;border:1px solid var(--acc);border-radius:12px}
+.key p{font-size:12px;color:var(--mute);margin:8px 0 0}
+.note{font-size:12px;color:var(--mute);margin-top:6px}
+</style>
+</head>
+<body>
+
+<section id="auth">
+ <div class="authbox">
+  <div class="logo">Рамка</div>
+  <p>Данные из ваших API — в оверлей для OBS за пару кликов.</p>
+  <div class="tabs" role="tablist">
+   <button role="tab" aria-selected="true" id="tLogin">Вход</button>
+   <button role="tab" aria-selected="false" id="tReg">Регистрация</button>
+  </div>
+  <div class="row"><label for="em">Почта</label><input id="em" type="email" placeholder="you@mail.com"></div>
+  <div class="row"><label for="pw">Пароль</label><input id="pw" type="password" placeholder="••••••••"></div>
+  <button class="btn" id="go" style="width:100%">Войти</button>
+  <p class="note" id="err" role="alert"></p>
+ </div>
+</section>
+
+<main id="app" class="hide">
+ <header><div class="logo" style="font-size:20px">Рамка</div><button class="btn ghost" id="out">Выйти</button></header>
+ <div class="wrap">
+  <div>
+   <div class="card">
+    <h2>Оверлей для вебки: FACEIT</h2>
+    <div class="stage" id="stage">
+     <div class="cam">Здесь будет ваша вебка</div>
+     <div class="bar" id="bar">
+      <div class="n" id="pn">Ник</div>
+      <svg class="lvl" id="pl" viewBox="0 0 44 44" aria-hidden="true"></svg>
+      <div class="e"><span id="pe">0</span><small>ELO</small></div>
+     </div>
+    </div>
+    <div class="controls">
+     <div><label for="inNick">Ник на FACEIT</label><input id="inNick" type="text" autocomplete="off"></div>
+     <div><label for="inLvl">Уровень</label><input id="inLvl" type="text" disabled></div>
+     <div><label for="inElo">Elo</label><input id="inElo" type="text" disabled></div>
+     <div><label>Цвет рамки</label><div class="sw" id="sw"></div></div>
+    </div>
+    <button class="btn" id="saveSet" style="margin-top:14px">Сохранить</button><p class="note" id="msg" role="status"></p>
+    <div class="link">
+     <input id="url" type="text" readonly aria-label="Ссылка для OBS">
+     <button class="btn" id="copy">Скопировать</button>
+    </div>
+    <p class="note">В OBS: Источники → «+» → Браузер → вставьте ссылку, размер 600×120. Оверлей обновляется сам каждые 30 секунд. Не показывайте ссылку другим: по ней виден ваш оверлей.</p>
+   </div>
+  </div>
+
+  <aside class="card">
+   <div class="me"><div class="ava" id="ava">S</div><div><b id="meNick">s1mpleStreamer</b><span id="meMail">you@mail.com</span></div></div>
+   <h2>Подключённые API</h2>
+   <button class="api" id="aF" aria-expanded="false"><div class="t">FACEIT<span class="s" id="sF">не подключено</span></div><div class="s">Уровень, Elo, статистика матчей</div></button>
+   <div class="key hide" id="kF">
+    <label for="fk">Server-side API key</label>
+    <input id="fk" type="password" placeholder="Ключ из developers.faceit.com">
+    <button class="btn" id="saveF" style="margin-top:10px">Подключить</button>
+    <p>Ключ бесплатный: developers.faceit.com → Create App.</p>
+   </div>
+   <button class="api" id="aT"><div class="t">Twitch<span class="s">скоро</span></div><div class="s">Зрители, подписчики, последний фолловер</div></button>
+   <button class="api" id="aS"><div class="t">Steam<span class="s">скоро</span></div><div class="s">Часы в игре, достижения</div></button>
+  </aside>
+ </div>
+</main>
+
+<script src="/lvl.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var mode="login",ac="#ff5500",colors=["#ff5500","#8c78ff","#1ce4a0","#ffc800"];
+function api(p,b){return fetch(p,{method:b?"POST":"GET",credentials:"same-origin",headers:b?{"Content-Type":"application/json"}:{},body:b?JSON.stringify(b):undefined})
+ .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Ошибка");return j})})}
+function setMode(m){mode=m;$("tLogin").setAttribute("aria-selected",m==="login");$("tReg").setAttribute("aria-selected",m==="reg");$("go").textContent=m==="login"?"Войти":"Создать аккаунт";$("err").textContent=""}
+$("tLogin").onclick=function(){setMode("login")};
+$("tReg").onclick=function(){setMode("reg")};
+$("go").onclick=function(){
+ $("err").textContent="";
+ api(mode==="login"?"/api/login":"/api/register",{email:$("em").value,password:$("pw").value}).then(enter).catch(function(e){$("err").textContent=e.message})};
+$("pw").onkeydown=function(e){if(e.key==="Enter")$("go").click()};
+$("out").onclick=function(){api("/api/logout",{}).then(function(){$("pw").value="";$("app").classList.add("hide");$("auth").classList.remove("hide")})};
+
+var sw=$("sw");
+colors.forEach(function(c,i){
+ var b=document.createElement("button");b.style.background=c;b.setAttribute("aria-label","Цвет "+(i+1));b.dataset.c=c;
+ b.onclick=function(){ac=c;paint()};sw.appendChild(b)});
+function paint(){$("bar").style.setProperty("--ac",ac);[].forEach.call(sw.children,function(x){x.setAttribute("aria-pressed",x.dataset.c===ac)})}
+
+function enter(me){
+ $("auth").classList.add("hide");$("app").classList.remove("hide");
+ ac=me.color;paint();
+ $("inNick").value=me.nick;$("url").value=me.overlayUrl;
+ $("meMail").textContent=me.email;
+ $("meNick").textContent=me.nick||me.email.split("@")[0];
+ $("ava").textContent=(me.nick||me.email).charAt(0).toUpperCase();
+ $("sF").textContent=me.hasKey?"подключено":"не подключено";$("sF").classList.toggle("ok",me.hasKey);
+ preview()}
+function preview(){
+ $("msg").textContent="";
+ api("/api/preview").then(function(d){
+  if(d.error){$("msg").textContent=d.error;$("pn").textContent=$("inNick").value||"Ник";$("pe").textContent="0";$("pl").innerHTML=lvlSvg(1);$("inLvl").value="";$("inElo").value="";return}
+  $("pn").textContent=d.nick;$("pe").textContent=d.elo;$("pl").innerHTML=lvlSvg(d.level);$("inLvl").value=d.level;$("inElo").value=d.elo;
+  $("msg").textContent="Данные получены с FACEIT"}).catch(function(e){$("msg").textContent=e.message})}
+
+$("saveSet").onclick=function(){
+ api("/api/settings",{nick:$("inNick").value,color:ac}).then(enter).catch(function(e){$("msg").textContent=e.message})};
+$("aF").onclick=function(){
+ var open=$("aF").getAttribute("aria-expanded")==="true";
+ $("aF").setAttribute("aria-expanded",!open);$("kF").classList.toggle("hide",open)};
+$("saveF").onclick=function(){
+ var k=$("fk").value.trim();if(!k){$("fk").focus();return}
+ api("/api/settings",{faceitKey:k}).then(function(me){$("fk").value="";$("kF").classList.add("hide");$("aF").setAttribute("aria-expanded","false");enter(me)}).catch(function(e){$("msg").textContent=e.message})};
+$("copy").onclick=function(){
+ var b=$("copy"),done=function(){b.textContent="Скопировано";setTimeout(function(){b.textContent="Скопировать"},1500)};
+ try{navigator.clipboard.writeText($("url").value).then(done,function(){$("url").select();done()})}catch(x){$("url").select();done()}};
+
+api("/api/me").then(enter).catch(function(){});
+})();
+</script>
+</body>
+</html>
