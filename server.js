@@ -55,6 +55,11 @@ http.createServer(async(req,res)=>{
   const p=new URL(req.url,'http://x').pathname;
   const ip=(req.headers['x-forwarded-for']||'').split(',')[0].trim()||req.socket.remoteAddress;
   if(req.method==='GET'){
+      if(p==='/admin'){
+    const k=new URL(req.url,'http://x').searchParams.get('key')||'';
+    if(!process.env.ADMIN_KEY||!same(k,process.env.ADMIN_KEY))return send(res,404,{error:'Не найдено'});
+    return send(res,200,Object.values(db.users).map(u=>({email:u.email,nick:u.nick,hasKey:!!u.faceitKey})));
+   }
    if(p==='/')return send(res,200,fs.readFileSync(path.join(__dirname,'public/index.html'),'utf8'),'text/html');
    if(p==='/lvl.js')return send(res,200,fs.readFileSync(path.join(__dirname,'public/lvl.js'),'utf8'),'application/javascript');
    const m=p.match(/^\/o\/([a-f0-9]{32})(\/data)?$/);
